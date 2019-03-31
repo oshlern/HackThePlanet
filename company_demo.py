@@ -121,8 +121,9 @@ class Bank:
         new_credit = -num_inquiries
         type_of_credit = 1  # number of banks
         credit = 0.35 * payment_history + 0.3 * amount_owed + 0.15 * length_of_history + 0.1 * new_credit + 0.1 * type_of_credit
-        print("Computing credit using {}'s history of payment_history: {}, amount_owed: {}, length_of_history: {}, new_credit: {}, type_of_credit: {}".format(user, payment_history, amount_owed, length_of_history, new_credit, type_of_credit))
-        print("{}'s computed credit: {}, ".format(user, credit))
+        if DEBUG:
+            print("Computing credit using {}'s history of payment_history: {}, amount_owed: {}, length_of_history: {}, new_credit: {}, type_of_credit: {}".format(user, payment_history, amount_owed, length_of_history, new_credit, type_of_credit))
+            print("{}'s computed credit: {}, ".format(user, credit))
         scaled_credit = min(max((credit+3) * 100, 400), 750)
 
         return scaled_credit

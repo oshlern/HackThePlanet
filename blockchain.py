@@ -2,6 +2,7 @@ import random
 from MakeMerkleTree import merkle
 import json
 from hashlib import sha256
+from flask import Flask, jsonify, request
 import requests as req
 from flask import Flask, jsonify, request
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -127,7 +128,14 @@ class Transaction:
         return self.dump()
 
 def generate_random_text(n):
-    return join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
+    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
+
+
+# blockchain = Blockchain()
+# for i in range(1,11):
+#     blockchain.add_block_transaction(i, Transaction(i, i+1, "transaction", 1))
+
+# print(blockchain.validate_chain())
 
 blockchain = Blockchain()
 nodes = set()
