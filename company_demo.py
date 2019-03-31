@@ -63,6 +63,7 @@ class Bank:
 
     def get_credit(self, user):
         user_transactions = self.find_relevant_transactions(user.address)
+        user_transactions = user.decrypt_please(user_transactions)
         credit = self.compute_credit(user_transactions)
         return credit
 
@@ -70,15 +71,15 @@ class Bank:
     def find_relevant_transactions(self, user_address):
         user_blocks = []
         for block in self.blockchain.blocks:
-            if block.header['addr'] == user_address:
+            if block['header']['addr'] == user_address:
                 user_blocks.append(block)
         # user_transactions = [decrypt(block, user_key) for block in user_blocks]
-        user_transactions = [block.transaction for block in user_blocks]
+        user_transactions = [block['transaction'] for block in user_blocks]
         return user_transactions
 
     def compute_credit(self, transactions):
         credit = 0
-        
+        pay
         # TODO: write code to compute credit
         # 35% payment history
         # 30% amount owed
@@ -101,6 +102,7 @@ class User:
         self.ssn = ssn
         self.address = self.bank.get_hashed_address(self)
         self.bank_account = bank.register_user(self)
+        self.private_key = RSA.generate(2048)
 
     def __str__(self):
         return self.name

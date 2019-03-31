@@ -3,6 +3,11 @@ from MakeMerkleTree import merkle
 import json
 from hashlib import sha256
 from flask import Flask, jsonify, request
+import requests as req
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from Crypto.PublicKey import RSA
+from Crypto.Random import get_random_bytes
+from Crypto.Cipher import PKCS1_OAEP
 
 # The structure of a transaction
 # encryptions and information each group has access to
@@ -13,7 +18,6 @@ from flask import Flask, jsonify, request
 # ENCRYPTED:
 # tx_value: (int)
 # tx_type: (string) (element of [hard_inquiry, derogatory_mark, transaction, loan, account_setup, account_deletion]) (etc.)
-# 
 # }
 
 class Blockchain:
@@ -21,7 +25,7 @@ class Blockchain:
         self.blocks = []
         self.blocknum = 0
 
-        self.blocks.append(Block(0, 0, Transaction(0, 0, "", 0))) # Null genesis block
+        self.blocks.append(Block(0, 0, Transaction(0, 0, "", 0)).dump()) # Null genesis block
 
     def validate_chain(self, chain=None): # False if chain is invalid, true if it is valid
         if chain == None:
@@ -29,29 +33,28 @@ class Blockchain:
 
         last_block = chain[0] # Genesis block
         for block in chain[1:]:
-            if(block.prev_hash != sha256(json.dumps(last_block.header).encode()).digest().hex()):
-                return False
-            if block.hash != merkle(block.transaction.dump()):
+            if(block['prev_hash'] != sha256(last_block['header'].encode()).digest().hex()):
                 return False
             last_block = block
         return True
     
-    def add_block_transaction(self, user_address, transaction):
-        new_block = Block(sha256(json.dumps(self.blocks[self.blocknum].header).encode()).digest().hex(), user_address, transaction)
+    def add_block_transaction(self, user_address, transaction, key):
+        new_block = Block(sha256(json.dumps(self.blocks[self.blocknum]['header']).encode()).digest().hex(), user_address, transaction, key)
         new_block.header['nonce'] = new_block.find_nonce(2)
-        self.blocks.append(new_block)
+        self.blocks.append(new_block.dump())
         self.blocknum += 1
 
     def add_block(self, new_block):
         new_block.header['nonce'] = new_block.find_nonce(2)
-        self.blocks.append(new_block)
+        self.blocks.append(new_block.dump())
         self.blocknum += 1
 
 class Block:
-    def __init__(self, prev_hash, user_address, transaction):
+    def __init__(self, prev_hash, user_address, transaction, key):
         self.prev_hash = prev_hash
         self.user_address = user_address
         self.transaction = transaction
+        self.key = key
         self.hash = merkle(self.transaction.dump()) # IS THIS WRONG??
         self.header = {'addr': self.user_address, 'ph': prev_hash, 'merkle': merkle(self.transaction.dump()), 'nonce': 0}
 
@@ -73,11 +76,29 @@ class Block:
         temp_dict = {
             "prev_hash": self.prev_hash,
             "user_address": self.user_address,
-            "transaction": json.loads(self.transaction.dump()),
+            "transaction": encrypt_txs(self.key),
             "hash": merkle(self.transaction.dump()),
-            "header": self.header
+            "header": json.dumps(self.header)
         }
         return temp_dict
+    
+    def encrypt_txs(self, pub_key):
+        # key = RSA.generate(2048)
+        # private_key = key
+
+        # public_key = key.publickey()
+       
+        # data = "I met aliens in UFO. Here is the map.".encode("utf-8")
+        # session_key = get_random_bytes(16)
+
+        # Encrypt the session key with the public RSA key
+        cipher_rsa = PKCS1_OAEP.new(pub_key)
+        enc_txs = cipher_rsa.encrypt(self.transaction.dump())
+
+        # Decrypt the session key with the private RSA key
+        # cipher_rsa = PKCS1_OAEP.new(private_key)
+        # session_key = cipher_rsa.decrypt(enc_session_key)
+        return enc_txs
 
 class Transaction:
     def __init__(self, src, dst, tx_type, tx_value):
