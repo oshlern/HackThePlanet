@@ -4,9 +4,17 @@
         <meta charset="utf-8">
         <title>Icosahedron</title>
         <style>
-        .container {
+        .container1 {
            position: absolute;
-           top: 50%;
+           top: 60%;
+           left: 50%;
+           -moz-transform: translateX(-50%) translateY(-50%);
+           -webkit-transform: translateX(-50%) translateY(-50%);
+           transform: translateX(-50%) translateY(-50%);
+        }
+        .container2 {
+           position: absolute;
+           top: 40%;
            left: 50%;
            -moz-transform: translateX(-50%) translateY(-50%);
            -webkit-transform: translateX(-50%) translateY(-50%);
@@ -15,7 +23,8 @@
         </style>
     </head>
     <body>
-        <div align="center" class="screen-center container" id="input"></div>
+        <div align="center" class="screen-center container1" id="input"></div>
+        <div align="center" class="screen-center container2" id="ssn_input"></div>
         <div align="center" class="player-info" id="player-info"></div>
 
         <!-- Load dependencies -->

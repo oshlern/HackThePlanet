@@ -61,11 +61,14 @@ class Bank:
         return bank_number
 
     def get_credit(self, user):
+        print("{} fetching {}'s transactions using their hashed signature from blockchain database".format(self, user))
         user_transactions, user_merkles = self.find_relevant_transactions(user.address)
         user_transactions = user.decrypt_please(user_transactions)
         for tx in range(len(user_transactions)):
             if merkle(user_transactions[tx]) != user_merkles[tx]:
                 raise ValueError("Incorrect merkle hash, {} is lying".format(user))
+            else:
+                print("{}'s decrypted transactions verified via merkle hash".format(user))
         credit = self.compute_credit(user, user_transactions)
         if DEBUG:
             print("Retrieved {}'s credit: {}".format(user, credit))
@@ -88,10 +91,22 @@ class Bank:
         transactions = [json.loads(transaction) for transaction in transactions]
         for transaction in transactions:
             if transaction['type'] == "derogatory_mark":
-                derog = 0
-            else:
                 derog += 1
-        payment_history = derog
+            else:
+                derog = 0
+            if derog == 0:
+                payment_history += 75
+            if derog == 1:
+                payment_history += 55
+            if derog == 2:
+                payment_history += 25
+            if derog == 3:
+                payment_history += 15
+            if derog == 4:
+                payment_history += 10
+            else:
+                payment_history = 0
+        payment_history = 0
         amount_in_bank = self.accounts[self.account_numbers[user]]
         amount_owed = 0
         if amount_in_bank >= 0:
@@ -106,27 +121,29 @@ class Bank:
         new_credit = -num_inquiries
         type_of_credit = 1  # number of banks
         credit = 0.35 * payment_history + 0.3 * amount_owed + 0.15 * length_of_history + 0.1 * new_credit + 0.1 * type_of_credit
-        print("credit : {}, payment_history: {}, amount_owed: {}, length_of_history: {}, new_credit: {}, type_of_credit: {}".format(credit, payment_history, amount_owed, length_of_history, new_credit, type_of_credit))
+        print("Computing credit using {}'s history of payment_history: {}, amount_owed: {}, length_of_history: {}, new_credit: {}, type_of_credit: {}".format(user, payment_history, amount_owed, length_of_history, new_credit, type_of_credit))
+        print("{}'s computed credit: {}, ".format(user, credit))
         scaled_credit = min(max((credit+3) * 100, 400), 750)
+
         return scaled_credit
 
     def record_transaction(self, address, source, destination, value, pub_key):
         transaction = Transaction(source, destination, "transaction", value)
         self.blockchain.add_block_transaction(address, transaction, pub_key)
         if DEBUG:
-            print("Transaction {} recorded in blockchain".format(transaction))
+            print("Transaction of {} dollars from {} to {} recorded in blockchain database".format(value, source, destination))
 
     def record_derogatory(self, user):
         transaction = Transaction(user.address, user.address, 0, "derogatory_mark")
         self.blockchain.add_block_transaction(user.address, transaction, user.public_key)
         if DEBUG:
-            print("Derogatory mark recorded for {} in blockchain".format(user))
+            print("Derogatory mark recorded for {} in blockchain database".format(user))
 
     def record_inquiry(self, user):
         transaction = Transaction(user.address, user.address, 0, "hard_inquiry")
         self.blockchain.add_block_transaction(user.address, transaction, user.public_key)
         if DEBUG:
-            print("Hard inquiry recorded for {} in blockchain".format(user))
+            print("Hard inquiry recorded for {} in blockchain database".format(user))
 
     def __str__(self):
         return self.name
@@ -140,11 +157,11 @@ class User:
         self.bank_account = bank.register_user(self)
         self.private_key = RSA.generate(2048)
         self.public_key = self.private_key.publickey()
-    
+
     def decrypt_please(self, enc_transactions):
         cipher_rsa = PKCS1_OAEP.new(self.private_key)
         if DEBUG:
-            print("{} decrypted transactions".format(self))
+            print("{} decrypted their transactions using their secret private key".format(self))
         decrypted = [cipher_rsa.decrypt(enc_transaction).decode() for enc_transaction in enc_transactions]
         return decrypted
 

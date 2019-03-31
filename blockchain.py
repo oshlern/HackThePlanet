@@ -27,33 +27,6 @@ from Crypto.Cipher import PKCS1_OAEP
 def rand_pub_key():
     return RSA.generate(2048).publickey()
 
-
-class RequestHandler(BaseHTTPRequestHandler):
-    def __init__(self, request, client_address, server):
-        self.request = request
-        self.client_address = client_address
-        self.server = server
-
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-        self.write.wfile(bytes("Hi"))
-        #self.write.write(bytes(blockchain.blocks[blockchain.blocknum-1].hash, encoding="utf-8")) # Just return the newest hash
-        return
-
-    def do_POST(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-        content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-        post_data = self.rfile.read(content_length) # <--- Gets the data itself
-
-        if(post_data == "request_update"):
-            self.wfile.write([b for b in blockchain.blocks])
-
 class Blockchain:
     def __init__(self):
         self.blocks = []
@@ -77,13 +50,6 @@ class Blockchain:
         new_block.header['nonce'] = new_block.find_nonce(2)
         self.blocks.append(new_block.dump())
         self.blocknum += 1
-    
-    def add_block_transaction_encrypted(self, user_address, encrypted_transaction, key):
-        new_block = Block(sha256(json.dumps(self.blocks[self.blocknum]['header']).encode()).digest().hex(), user_address, encrypted_transaction, key)
-        new_block.header['nonce'] = new_block.find_nonce(2)
-        self.blocks.append(new_block.dump())
-        self.blocknum += 1
-
 
     def add_block(self, new_block):
         new_block.header['nonce'] = new_block.find_nonce(2)
@@ -91,12 +57,12 @@ class Blockchain:
         self.blocknum += 1
 
 class Block:
-    def __init__(self, prev_hash, user_address, transaction, key):
+    def __init__(self, prev_hash, user_address, transaction, key, is_encrypted=False):
         self.prev_hash = prev_hash
         self.user_address = user_address
         self.transaction = transaction
         self.key = key
-        self.hash = merkle(self.transaction.dump()) # IS THIS WRONG??
+        self.hash = merkle(self.transaction.dump())
         self.header = {'addr': self.user_address, 'ph': prev_hash, 'merkle': merkle(self.transaction.dump()), 'nonce': 0}
 
     def find_nonce(self, DIFF):
@@ -178,21 +144,13 @@ def get_blockchain():
     temp = str([b for b in blockchain.blocks])[1:-1].replace("'", '"')
     return temp
 
-@app.route('/add_block_encrypted', methods=['POST'])
-def recv_block_encrypted():
-    values = request.get_json()
-    user = values["user"]
-    transaction = values["transaction"]
-    blockchain.add_block_transaction_encrypted(user, transaction, rand_pub_key())
-    return "complete\n" + blockchain.blocks[blockchain.blocknum-1].hash
-
 @app.route('/add_block', methods=['POST'])
 def recv_block():
     values = request.get_json()
     user = values["user"]
     transaction = Transaction(values["transaction"]["src"], values["transaction"]["dest"], values["transaction"]["tx_type"], values["transaction"]["tx_value"])
     blockchain.add_block_transaction(user, transaction, rand_pub_key())
-    return "complete\n" + blockchain.blocks[blockchain.blocknum-1].hash
+    return "complete\n" + str(blockchain.blocks[blockchain.blocknum-1])
 
 if(__name__ == "__main__"):
     app.run(host='10.1.128.115', port=8082)
