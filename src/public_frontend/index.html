@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+    <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 	<head>
     <meta charset="utf-8">
     <title>Blockchain</title>
@@ -9,12 +10,15 @@
     </style>
     </head>
     <body>
-    	<div id="body">
-            <div id="header"></div>
-            <div id="drawer"></div>
-            <div id ="main-content" style='margin-top: 70px;'></div>
-    		<div id="footer"></div>
-    	</div>
+        <form id="key_form" action="/action_page.php">
+            Input Ur Key Here<input type="text" id="key_input" ><br>
+            <input id="key_submit" type="submit" value="Submit">
+        </form>
     </body>
-    <script src = "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script>
+        $("#key_submit").onsubmit = function() {
+          alert($("#key_input").val());
+        };
+    </script>
+    
 </html>

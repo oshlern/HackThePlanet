@@ -1,91 +1,71 @@
 import random
+from MakeMerkleTree import merkle
+import json
+from hashlib import sha256
 
-def receive_transaction_data():
-
-def put_on_near():
-def get_from_near():
-
-def add_to_blockchain(tx):
-    
-    
 # The structure of a transaction
 # encryptions and information each group has access to
 # {
-# address:
-# money_source: (address or bank account)
-# money_dest: (address or bank account)
+# address: (THE ADDRESS)
+# source: (address or bank account)
+# dest: (address or bank account)
+# ENCRYPTED:
 # tx_value: (int)
-# debt_to_source: (True/False)
-# repayment: (True/False)
+# tx_type: (string) (element of [hard_inquiry, derogatory_mark, transaction, loan, account_setup, account_deletion]) (etc.)
+# 
 # }
 
-
-class Transaction:
-    def __init__(self, address, src, dst, value, debt, repayment):
-    self.address = address
-    self.money_source = src
-    self.money_dest = dst
-    self.value = value
-    self.debt = debt
-    self.repayment = repayment
-
-class Company:
-    def __init__(self, hiring_threshold, bank):
-        self.hiring_threshold = hiring_threshold
-        self.bank = bank
-        self.employees = []
-    
-    def hire(self, user):
-        credit = self.bank.getCredit(user)
-        if credit >= selfhiring_threshold:
-            return True
-        
-
-class Bank:
+class Blockchain:
     def __init__(self):
-        self.accounts = {}
+        self.blocks = []
+        self.blocknum = 0
+        self.DIFF = 4
+
+        self.blocks.append(Block(0, 0, Transaction(0, 0, "", 0))) # Null genesis block
+
+    def add_block_transaction(self, user, transaction):
+        new_block = Block(self.blocks[len(block)-1].hash, user, transaction)
+        self.blocks.append(new_block)
+        self.blocknum += 1
+
+    def add_block(self, new_block):
+        self.blocks.append(new_block)
+        self.blocknum += 1
+
+class Block:
+    def __init__(self, prev_hash, user, transaction):
+        self.prev_hash = prev_hash
+        self.user = user
+        self.transaction = transaction
+        self.hash = merkle(self.transaction.dump())
+        self.header = {'addr': self.user, 'ph':prev_hash, 'merkle': self.hash, 'nonce': 0}
+
+    def find_nonce(self):
+        nonce = 0
+        head = self.header
+        tester = sha256(json.dumps(head).encode())
+        while tester.digest().hex()[:self.DIFF] != '0'*self.DIFF:
+            nonce += 1
+            head['nonce'] = nonce
+            tester = sha256(json.dumps(head).encode())
+        #print(nonce)
+        #print(tester.digest().hex())
+        return nonce
         
+class Transaction:
+    def __init__(self, src, dst, tx_type, tx_value):
+        self.source = src
+        self.dest = dst
+        self.value = tx_value
+        self.type = tx_type
 
-    def hash_user(self, name, address):
-        # TODO: hash name and address
-        
-        return hashed_user
+    def dump(self):
+        temp_dict = {'source': self.source,
+                    'dest': self.dest,
+                    'value': self.value,
+                    'type': self.type
+                    }   
+        return json.dumps(temp_dict)
 
-    def register_user(self):
-        pass
-
-class User:
-    def __init__(self, name, address, bank):
-        self.name = name
-        self.address = address
-        self.bank_account = bank.register_user(self)
-
-class Shop:
-    def __init__(self, items):
-        self.items = items # dict of items and prices (e.g. {"pizza": 10, "cheese": 3})
-        self.bank_account = 
-
-    def pass_tx(self, src, dst, value, debt=False, repayment=False):  # btw, bank accounts are BBBB CCCC CCCC CCCC CCCC
-        user_bank = random.
-        Transaction
-
-    def record_purchase(self, user, item):
-        assert item in self.items
-        price = self.items[item]
-        src = user.name # address?
-        debt, repayment = False, False
-        self.pass_tx(user, self, price)
-
-def main():
-    Near = Company(hiring_threshold=700)
-    AspiringProgrammer = User("Aliaksandr Hudzilin", "123 Electric Ave")
-    BankOfAmerica = Bank()
-
-    PapaJohns = Shop()
-    WalMart = Shop()
-
-    # Run sample transactions
-    PapaJohns.record_purchase(AspiringProgrammer, "pizza")
-    WalMart.record_purchase(AspiringProgrammer, "TV")
-
-    Near.hire(AspiringProgrammer)
+def generate_random_text(n):
+    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
