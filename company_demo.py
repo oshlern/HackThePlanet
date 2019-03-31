@@ -82,7 +82,7 @@ class Bank:
         # TODO: write code to compute credit
         # 35% payment history
         # 30% amount owed
-        # 15% length of history
+        # 15% length of history -- this can be calculated by "time from first block"
         # 10% new credit
         # 10% type of credit used
         return credit

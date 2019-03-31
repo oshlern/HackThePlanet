@@ -2,6 +2,8 @@ import random
 from MakeMerkleTree import merkle
 import json
 from hashlib import sha256
+import requests as req
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # The structure of a transaction
 # encryptions and information each group has access to
@@ -15,12 +17,35 @@ from hashlib import sha256
 # 
 # }
 
+class Server(BaseHTTPRequestHandler):
+    def __init__(self, request, client_address, server):
+        self.request = request
+        self.client_address = client_address
+        self.server = server
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+        self.wfile.write(bytes(self.blockchain.blocks[self.blockchain.blocknum-1].hash, encoding="utf-8")) # Just return the newest hash
+        return
+
+    def do_POST(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+        content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
+        post_data = self.rfile.read(content_length) # <--- Gets the data itself
+
+        if(post_data == "request_update"):
+            self.wfile.write([b.dump() for b in self.blockchain.blocks])
+
 class Blockchain:
     def __init__(self):
         self.blocks = []
         self.blocknum = 0
-        self.user_table = set()
-        self.nodes = set() # List of IP addresses of the other blockchains
 
         self.blocks.append(Block(0, 0, Transaction(0, 0, "", 0))) # Null genesis block
 
@@ -48,15 +73,12 @@ class Blockchain:
         self.blocks.append(new_block)
         self.blocknum += 1
 
-    def synchronize(self):
-        pass
-
 class Block:
     def __init__(self, prev_hash, user_address, transaction):
         self.prev_hash = prev_hash
         self.user_address = user_address
         self.transaction = transaction
-        self.hash = merkle(self.transaction.dump())
+        self.hash = merkle(self.transaction.dump()) # IS THIS WRONG??
         self.header = {'addr': self.user_address, 'ph': prev_hash, 'merkle': merkle(self.transaction.dump()), 'nonce': 0}
 
     def find_nonce(self, DIFF):
@@ -72,6 +94,16 @@ class Block:
         #print(nonce)
         #print(tester.digest().hex())
         return nonce
+    
+    def dump(self):
+        temp_dict = {
+            "prev_hash": self.prev_hash,
+            "user_address": self.user_address,
+            "transaction": self.transaction.dump(),
+            "hash": merkle(self.transaction.dump()),
+            "header": self.header
+        }
+        return temp_dict
 
 class Transaction:
     def __init__(self, src, dst, tx_type, tx_value):
@@ -92,11 +124,23 @@ class Transaction:
         return self.dump()
 
 def generate_random_text(n):
-    returnjoin(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
+    return join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
+
+def run(server_class=HTTPServer, handler_class=Server, port=8080):
+    server_address = ('127.0.0.1', port)
+    httpd = server_class(server_address, handler_class)
+    print('Starting httpd...')
+    httpd.serve_forever()
 
 if(__name__ == "__main__"):
-    blockchain = Blockchain()
-    for i in range(1,11):
-        blockchain.add_block_transaction(i, Transaction(i, i+1, "transaction", 1))
+    # blockchain = Blockchain()
+    # for i in range(1,11):
+    #     blockchain.add_block_transaction(i, Transaction(i, i+1, "transaction", 1))
     
-    print(blockchain.validate_chain())
+    # print(blockchain.validate_chain())
+    
+    blockchain = Blockchain()
+    nodes = set() # List of IP addresses of the other blockchains
+    usertable = set()
+
+    run()
