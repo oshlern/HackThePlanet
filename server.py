@@ -11,7 +11,6 @@ from Crypto.Cipher import PKCS1_OAEP
 from blockchain import Blockchain
 from company_demo import Bank, Company, User, Shop, PAPAJOHNS, WALMART
 
-blockchain = Blockchain()
 app = Flask(__name__)
 
 BankOfAmerica = Bank("BankOfAmerica")
@@ -22,14 +21,23 @@ AspiringProgrammer = User(name="Yoav Rafalin", ssn="123456", bank=BankOfAmerica)
 PapaJohns = Shop("Papa John's", PAPAJOHNS, BankOfAmerica)
 WalMart = Shop("Walmart", WALMART, BankOfAmerica)
 
+# Run sample transactions
+PapaJohns.record_purchase(AspiringProgrammer, "small_pizza")
+WalMart.record_purchase(AspiringProgrammer, "bike")
+
+BankOfAmerica.record_inquiry(AspiringProgrammer)
+BankOfAmerica.record_derogatory(AspiringProgrammer)
+
+PapaJohns.record_purchase(AspiringProgrammer, "big_pizza")
+WalMart.record_purchase(AspiringProgrammer, "desk")
 
 @app.route('/latest_hash', methods=['GET'])
 def get_latest_hash():
-    return blockchain.blocks[blockchain.blocknum-1].hash
+    return BankOfAmerica.blockchain.blocks[BankOfAmerica.blockchain.blocknum-1]["hash"]
 
 @app.route('/blockchain', methods=['GET'])
 def get_blockchain():
-    temp = str([b for b in blockchain.blocks])[1:-1].replace("'", '"')
+    temp = str([b for b in BankOfAmerica.blockchain.blocks])[1:-1].replace("'", '"')
     return temp
 
 @app.route('/add_block', methods=['POST'])
@@ -38,7 +46,7 @@ def recv_block():
     ssn = values["ssn"]
     name = values["name"]
     transaction = Transaction(values["transaction"]["src"], values["transaction"]["dest"], values["transaction"]["tx_type"], values["transaction"]["tx_value"])
-    blockchain.add_block_transaction(get_hashed_address(ssn, name), transaction, BankOfAmerica.registered_users[values['name']].public_key) # TODO: CHANGE THIS rand_pub_key()
+    BankOfAmerica.blockchain.add_block_transaction(get_hashed_address(ssn, name), transaction, BankOfAmerica.registered_users[values['name']].public_key) # TODO: CHANGE THIS rand_pub_key()
     return "complete\n" + str(blockchain.blocks[blockchain.blocknum-1])
     
 @app.route('/get_credit_score', methods=["POST"])
@@ -51,16 +59,6 @@ def send_credit_score():
 
 
 if(__name__ == "__main__"):
-    app.run(host='10.1.128.115', port=8085)
-
-    # Run sample transactions
-    PapaJohns.record_purchase(AspiringProgrammer, "small_pizza")
-    WalMart.record_purchase(AspiringProgrammer, "bike")
-
-    BankOfAmerica.record_inquiry(AspiringProgrammer)
-    BankOfAmerica.record_derogatory(AspiringProgrammer)
-
-    PapaJohns.record_purchase(AspiringProgrammer, "big_pizza")
-    WalMart.record_purchase(AspiringProgrammer, "desk")
+    app.run(host='10.1.128.115', port=8086)
 
     print(Near.hire(AspiringProgrammer))
