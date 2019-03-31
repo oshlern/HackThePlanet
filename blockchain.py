@@ -24,21 +24,27 @@ class Blockchain:
 
         self.blocks.append(Block(0, 0, Transaction(0, 0, "", 0))) # Null genesis block
 
-    def validate_chain(self, chain): # False if chain is invalid, true if it is valid
+    def validate_chain(self, chain=None): # False if chain is invalid, true if it is valid
+        if chain == None:
+            chain = self.blocks
+
         last_block = chain[0] # Genesis block
         for block in chain[1:]:
-            print(block.prev_hash, last_block.hash, block.user_address, last_block.user_address)
-            if(block.prev_hash != last_block.hash):
+            if(block.prev_hash != sha256(json.dumps(last_block.header).encode()).digest().hex()):
+                return False
+            if block.hash != merkle(block.transaction.dump()):
                 return False
             last_block = block
         return True
     
     def add_block_transaction(self, user_address, transaction):
-        new_block = Block(self.blocks[self.blocknum].hash, user_address, transaction)
+        new_block = Block(sha256(json.dumps(self.blocks[self.blocknum].header).encode()).digest().hex(), user_address, transaction)
+        new_block.header['nonce'] = new_block.find_nonce(2)
         self.blocks.append(new_block)
         self.blocknum += 1
 
     def add_block(self, new_block):
+        new_block.header['nonce'] = new_block.find_nonce(2)
         self.blocks.append(new_block)
         self.blocknum += 1
 
@@ -51,7 +57,7 @@ class Block:
         self.user_address = user_address
         self.transaction = transaction
         self.hash = merkle(self.transaction.dump())
-        self.header = {'addr': self.user_address, 'ph': prev_hash, 'merkle': self.hash, 'nonce': 0}
+        self.header = {'addr': self.user_address, 'ph': prev_hash, 'merkle': merkle(self.transaction.dump()), 'nonce': 0}
 
     def find_nonce(self, DIFF):
         nonce = 0
@@ -80,8 +86,11 @@ class Transaction:
                     }
         return json.dumps(temp_dict)
 
+    def __str__(self):
+        return self.dump()
+
 def generate_random_text(n):
-    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
+    returnjoin(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
 
 if(__name__ == "__main__"):
     blockchain = Blockchain()

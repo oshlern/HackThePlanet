@@ -49,7 +49,10 @@ class Bank:
         self.blockchain = Blockchain()
 
     def get_hashed_address(self, user):
-        address = sha256(sha256((user.ssn + user.name).encode()).digest()).digest().decode().hex()
+        print(sha256((user.ssn + user.name).encode()).digest())
+        print(sha256(sha256((user.ssn + user.name).encode()).digest()).digest())
+        print(sha256(sha256((user.ssn + user.name).encode()).digest()))
+        address = sha256(sha256((user.ssn + user.name).encode()).digest()).digest()
         return address
 
     def register_user(self, user):
@@ -97,7 +100,7 @@ class User:
         self.bank = bank
         self.ssn = ssn
         self.address = self.bank.get_hashed_address(self)
-        self.bank_account = bank.register_user()
+        self.bank_account = bank.register_user(self)
 
     def __str__(self):
         return self.name
@@ -107,7 +110,7 @@ class Shop:
         self.name = name
         self.items = items
         self.bank = bank
-        self.bank_account = bank.register_user()
+        self.bank_account = bank.register_user(self)
 
     def record_purchase(self, user, item):
         assert item in self.items
@@ -131,10 +134,12 @@ def main():
     WalMart = Shop("Walmart", WALMART, BankOfAmerica)
 
     # Run sample transactions
-    PapaJohns.record_purchase(AspiringProgrammer, "pizza")
-    WalMart.record_purchase(AspiringProgrammer, "TV")
+    PapaJohns.record_purchase(AspiringProgrammer, "small_pizza")
+    WalMart.record_purchase(AspiringProgrammer, "bike")
 
-    Near.hire(AspiringProgrammer)
+    print(Near.hire(AspiringProgrammer))
+
+    print([str(block.transaction) for block in BankOfAmerica.blockchain.blocks])
 
 if __name__ == "__main__":
     main()
