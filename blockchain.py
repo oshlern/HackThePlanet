@@ -19,12 +19,22 @@ class Blockchain:
     def __init__(self):
         self.blocks = []
         self.blocknum = 0
-        self.user_table = []
+        self.user_table = set()
+        self.nodes = set() # List of IP addresses of the other blockchains
 
         self.blocks.append(Block(0, 0, Transaction(0, 0, "", 0))) # Null genesis block
 
+    def validate_chain(self, chain): # False if chain is invalid, true if it is valid
+        last_block = chain[0] # Genesis block
+        for block in chain[1:]:
+            print(block.prev_hash, last_block.hash, block.user_address, last_block.user_address)
+            if(block.prev_hash != last_block.hash):
+                return False
+            last_block = block
+        return True
+    
     def add_block_transaction(self, user_address, transaction):
-        new_block = Block(self.blocks[len(block)-1].hash, user_address, transaction)
+        new_block = Block(self.blocks[self.blocknum].hash, user_address, transaction)
         self.blocks.append(new_block)
         self.blocknum += 1
 
@@ -33,7 +43,7 @@ class Blockchain:
         self.blocknum += 1
 
     def synchronize():
-
+        pass
 
 class Block:
     def __init__(self, prev_hash, user_address, transaction):
@@ -72,3 +82,10 @@ class Transaction:
 
 def generate_random_text(n):
     return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
+
+if(__name__ == "__main__"):
+    blockchain = Blockchain()
+    for i in range(1,11):
+        blockchain.add_block_transaction(i, Transaction(i, i+1, "transaction", 1))
+    
+    print(blockchain.validate_chain())
