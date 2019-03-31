@@ -41,7 +41,7 @@ class Block:
         self.user_address = user_address
         self.transaction = transaction
         self.hash = merkle(self.transaction.dump())
-        self.header = {'addr': self.user_address, 'ph':prev_hash, 'merkle': self.hash, 'nonce': 0}
+        self.header = {'addr': self.user_address, 'ph': prev_hash, 'merkle': self.hash, 'nonce': 0}
 
     def find_nonce(self, DIFF):
         nonce = 0
@@ -54,7 +54,7 @@ class Block:
         #print(nonce)
         #print(tester.digest().hex())
         return nonce
-        
+
 class Transaction:
     def __init__(self, src, dst, tx_type, tx_value):
         self.source = src

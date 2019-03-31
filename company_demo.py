@@ -115,6 +115,7 @@ class User:
 
 class Shop:
     def __init__(self, name, items, bank):
+        self.name = name
         self.items = items
         self.bank = bank
         self.bank_account = bank.register_user()
@@ -137,8 +138,8 @@ def main():
     Near = Company(name="Near", hiring_threshold=700, bank=BankOfAmerica)
     AspiringProgrammer = User(name="Aliaksandr Hudzilin", ssn="123456", bank=BankOfAmerica)#"123 Electric Ave")
 
-    PapaJohns = Shop("Papa John's", PAPAJOHNS)
-    WalMart = Shop("Walmart", WALMART)
+    PapaJohns = Shop("Papa John's", PAPAJOHNS, BankOfAmerica)
+    WalMart = Shop("Walmart", WALMART, BankOfAmerica)
 
     # Run sample transactions
     PapaJohns.record_purchase(AspiringProgrammer, "pizza")
