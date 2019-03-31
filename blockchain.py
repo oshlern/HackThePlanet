@@ -24,7 +24,7 @@ class Blockchain:
         self.blocks.append(Block(0, 0, Transaction(0, 0, "", 0))) # Null genesis block
 
     def add_block_transaction(self, user_address, transaction):
-        new_block = Block(self.blocks[len(block)-1].hash, user_address, transaction)
+        new_block = Block(self.blocks[-1].hash, user_address, transaction)
         self.blocks.append(new_block)
         self.blocknum += 1
 
@@ -32,8 +32,8 @@ class Blockchain:
         self.blocks.append(new_block)
         self.blocknum += 1
 
-    def synchronize():
-
+    def synchronize(self):
+        pass
 
 class Block:
     def __init__(self, prev_hash, user_address, transaction):
@@ -47,7 +47,7 @@ class Block:
         nonce = 0
         head = self.header
         tester = sha256(json.dumps(head).encode())
-        while tester.digest().hex()[:self.DIFF] != '0'*self.DIFF:
+        while tester.digest().hex()[:DIFF] != '0'*DIFF:
             nonce += 1
             head['nonce'] = nonce
             tester = sha256(json.dumps(head).encode())
@@ -69,6 +69,3 @@ class Transaction:
                     'type': self.type
                     }
         return json.dumps(temp_dict)
-
-def generate_random_text(n):
-    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))

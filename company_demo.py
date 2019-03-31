@@ -1,6 +1,7 @@
 import random
 from MakeMerkleTree import merkle
 import json
+import string
 from blockchain import *
 
 PAPAJOHNS = {'big_pizza': 20, 'small_pizza': 10, 'kid_pizza': 6, 'salad': 8}
@@ -58,25 +59,29 @@ class Bank:
         self.name = name
         self.blockchain = Blockchain()
 
-    def hash_user(self, name, ssn):
-        # TODO: hash name and ssn into address
-        
-        return hashed_user
+    def get_hashed_address(self, user):
+        address = sha256(sha256((user.ssn + user.name).encode()).digest()).digest().decode().hex()
+        return address
 
-    def register_user(self)# user):
+    def register_user(self, user):
         bank_number = generate_random_text(20)
         self.account_numbers[user] = bank_number
         self.accounts[bank_number] = 0
         return bank_number
 
     def get_credit(self, user):
-        
-        
+        user_transactions = self.find_relevant_transactions(user.address)
+        credit = self.compute_credit(user_transactions)
         return credit
 
+    # Find all transactions by the user
     def find_relevant_transactions(self, user_address):
-        user_transactions = []
-        # Find all transactions by the user
+        user_blocks = []
+        for block in self.blockchain.blocks:
+            if block.header['addr'] == user_address:
+                user_blocks.append(block)
+        # user_transactions = [decrypt(block, user_key) for block in user_blocks]
+        user_transactions = [block.transaction for block in user_blocks]
         return user_transactions
 
     def compute_credit(self, transactions):
@@ -90,8 +95,8 @@ class Bank:
         # 10% type of credit used
         return credit
 
-    def record_transaction(self, address, source, destiation, value):
-        transaction = Transcation(source, destination, value, "transaction")
+    def record_transaction(self, address, source, destination, value):
+        transaction = Transaction(source, destination, value, "transaction")
         self.blockchain.add_block_transaction(address, transaction)
 
     def __str__(self):
@@ -100,13 +105,10 @@ class Bank:
 class User:
     def __init__(self, name, ssn, bank):
         self.name = name
-        self.address = self.generate_address()
         self.bank = bank
         self.ssn = ssn
+        self.address = self.bank.get_hashed_address(self)
         self.bank_account = bank.register_user()
-
-    def generate_address(self):
-        return sha256(sha256((ssn+name).encode()).digest()).digest().decode().hex()
 
     def __str__(self):
         return self.name
