@@ -42,7 +42,7 @@ class Company:
         self.employees = []
 
     def hire(self, user):
-        credit = self.bank.get_redit(user)
+        credit = self.bank.get_credit(user)
         if credit >= self.hiring_threshold:
             return True
         else:
@@ -70,13 +70,29 @@ class Bank:
         return bank_number
 
     def get_credit(self, user):
-        # TODO: write code to get credit
-        user.
+        
+        
         return credit
 
-    def record_transaction(self, source, destiation, value):
+    def find_relevant_transactions(self, user_address):
+        user_transactions = []
+        # Find all transactions by the user
+        return user_transactions
+
+    def compute_credit(self, transactions):
+        credit = 0
+        
+        # TODO: write code to compute credit
+        # 35% payment history
+        # 30% amount owed
+        # 15% length of history
+        # 10% new credit
+        # 10% type of credit used
+        return credit
+
+    def record_transaction(self, address, source, destiation, value):
         transaction = Transcation(source, destination, value, "transaction")
-        self.blockchain.add_block_transaction(user, transaction)
+        self.blockchain.add_block_transaction(address, transaction)
 
     def __str__(self):
         return self.name
