@@ -49,10 +49,10 @@ class Bank:
         self.blockchain = Blockchain()
 
     def get_hashed_address(self, user):
-        print(sha256((user.ssn + user.name).encode()).digest())
-        print(sha256(sha256((user.ssn + user.name).encode()).digest()).digest())
-        print(sha256(sha256((user.ssn + user.name).encode()).digest()))
-        address = sha256(sha256((user.ssn + user.name).encode()).digest()).digest()
+        # print(sha256((user.ssn + user.name).encode()).digest())
+        # print(sha256(sha256((user.ssn + user.name).encode()).digest()).digest())
+        # print(sha256(sha256((user.ssn + user.name).encode()).digest()))
+        address = sha256(sha256((user.ssn + user.name).encode()).digest()).digest().hex()
         return address
 
     def register_user(self, user):

@@ -62,6 +62,8 @@ class Block:
     def find_nonce(self, DIFF):
         nonce = 0
         head = self.header
+        # print(head, type(head))
+        # print(json.dumps(head))
         tester = sha256(json.dumps(head).encode())
         while tester.digest().hex()[:DIFF] != '0'*DIFF:
             nonce += 1
