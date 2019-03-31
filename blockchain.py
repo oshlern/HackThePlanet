@@ -2,8 +2,7 @@ import random
 from MakeMerkleTree import merkle
 import json
 from hashlib import sha256
-import requests as req
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from flask import Flask, jsonify, request
 
 # The structure of a transaction
 # encryptions and information each group has access to
@@ -16,31 +15,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 # tx_type: (string) (element of [hard_inquiry, derogatory_mark, transaction, loan, account_setup, account_deletion]) (etc.)
 # 
 # }
-
-class Server(BaseHTTPRequestHandler):
-    def __init__(self, request, client_address, server):
-        self.request = request
-        self.client_address = client_address
-        self.server = server
-
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-        self.wfile.write(bytes(self.blockchain.blocks[self.blockchain.blocknum-1].hash, encoding="utf-8")) # Just return the newest hash
-        return
-
-    def do_POST(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-        content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
-        post_data = self.rfile.read(content_length) # <--- Gets the data itself
-
-        if(post_data == "request_update"):
-            self.wfile.write([b.dump() for b in self.blockchain.blocks])
 
 class Blockchain:
     def __init__(self):
@@ -99,7 +73,7 @@ class Block:
         temp_dict = {
             "prev_hash": self.prev_hash,
             "user_address": self.user_address,
-            "transaction": self.transaction.dump(),
+            "transaction": json.loads(self.transaction.dump()),
             "hash": merkle(self.transaction.dump()),
             "header": self.header
         }
@@ -124,23 +98,37 @@ class Transaction:
         return self.dump()
 
 def generate_random_text(n):
-    return join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
+    return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
 
-def run(server_class=HTTPServer, handler_class=Server, port=8080):
-    server_address = ('127.0.0.1', port)
-    httpd = server_class(server_address, handler_class)
-    print('Starting httpd...')
-    httpd.serve_forever()
+
+# blockchain = Blockchain()
+# for i in range(1,11):
+#     blockchain.add_block_transaction(i, Transaction(i, i+1, "transaction", 1))
+
+# print(blockchain.validate_chain())
+
+blockchain = Blockchain()
+nodes = set()
+usertable = set()
+
+app = Flask(__name__)
+
+@app.route('/latest_hash', methods=['GET'])
+def get_latest_hash():
+    return blockchain.blocks[blockchain.blocknum-1].hash
+
+@app.route('/blockchain', methods=['GET'])
+def get_blockchain():
+    temp = str([b for b in blockchain.blocks])[1:-1].replace("'", '"')
+    return temp
+
+@app.route('/add_block', methods=['POST'])
+def recv_block():
+    values = request.get_json()
+    user = values["user"]
+    transaction = Transaction(values["transaction"]["src"], values["transaction"]["dest"], values["transaction"]["tx_type"], values["transaction"]["tx_value"])
+    blockchain.add_block_transaction(user, transaction, )
+    return "complete\n" + blockchain.blocks[blockchain.blocknum-1].hash
 
 if(__name__ == "__main__"):
-    # blockchain = Blockchain()
-    # for i in range(1,11):
-    #     blockchain.add_block_transaction(i, Transaction(i, i+1, "transaction", 1))
-    
-    # print(blockchain.validate_chain())
-    
-    blockchain = Blockchain()
-    nodes = set() # List of IP addresses of the other blockchains
-    usertable = set()
-
-    run()
+    app.run(host='127.0.0.1', port=8080)
