@@ -3,22 +3,11 @@ from MakeMerkleTree import merkle
 import json
 import string
 from blockchain import *
+from hashlib import sha256
 
 PAPAJOHNS = {'big_pizza': 20, 'small_pizza': 10, 'kid_pizza': 6, 'salad': 8}
 WALMART = {'bike': 300, 'gun': 400, 'desk': 100, 'utensils': 30, 'tupperware': 15}
 DEBUG = True
-
-def receive_transaction_data():
-    pass
-
-def put_on_near():
-    pass
-
-def get_from_near():
-    pass
-
-def add_to_blockchain(tx):
-    pass
 
 # The structure of a transaction
 # encryptions and information each group has access to
@@ -146,3 +135,6 @@ def main():
     WalMart.record_purchase(AspiringProgrammer, "TV")
 
     Near.hire(AspiringProgrammer)
+
+if __name__ == "__main__":
+    main()
