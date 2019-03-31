@@ -10,7 +10,6 @@ WALMART = {'bike': 300, 'gun': 400, 'desk': 100, 'utensils': 30, 'tupperware': 1
 DEBUG = True
 
 # The structure of a transaction
-# encryptions and information each group has access to
 # {
 # address: (THE ADDRESS)
 # source: (address or bank account)
@@ -34,8 +33,11 @@ class Company:
     def hire(self, user):
         credit = self.bank.get_credit(user)
         if credit >= self.hiring_threshold:
+            print("{} hired {}!".format(self, user))
+            self.employees.append(user)
             return True
         else:
+            print("{} rejected {}!".format(self, user))
             return False
 
     def __str__(self):
@@ -49,9 +51,6 @@ class Bank:
         self.blockchain = Blockchain()
 
     def get_hashed_address(self, user):
-        # print(sha256((user.ssn + user.name).encode()).digest())
-        # print(sha256(sha256((user.ssn + user.name).encode()).digest()).digest())
-        # print(sha256(sha256((user.ssn + user.name).encode()).digest()))
         address = sha256(sha256((user.ssn + user.name).encode()).digest()).digest().hex()
         return address
 
@@ -62,9 +61,14 @@ class Bank:
         return bank_number
 
     def get_credit(self, user):
-        user_transactions = self.find_relevant_transactions(user.address)
+        user_transactions, user_merkles = self.find_relevant_transactions(user.address)
         user_transactions = user.decrypt_please(user_transactions)
-        credit = self.compute_credit(user_transactions)
+        for tx in range(len(user_transactions)):
+            if merkle(user_transactions[tx]) != user_merkles[tx]:
+                raise ValueError("Incorrect merkle hash, {} is lying".format(user))
+        credit = self.compute_credit(user, user_transactions)
+        if DEBUG:
+            print("Retrieved {}'s credit: {}".format(user, credit))
         return credit
 
     # Find all transactions by the user
@@ -75,22 +79,54 @@ class Bank:
                 user_blocks.append(block)
         # user_transactions = [decrypt(block, user_key) for block in user_blocks]
         user_transactions = [block['transaction'] for block in user_blocks]
-        return user_transactions
+        user_merkles = [block['hash'] for block in user_blocks]
+        return user_transactions, user_merkles
 
-    def compute_credit(self, transactions):
+    def compute_credit(self, user, transactions):
         credit = 0
-        pay
-        # TODO: write code to compute credit
-        # 35% payment history
-        # 30% amount owed
-        # 15% length of history -- this can be calculated by "time from first block"
-        # 10% new credit
-        # 10% type of credit used
-        return credit
+        derog = 0
+        transactions = [json.loads(transaction) for transaction in transactions]
+        for transaction in transactions:
+            if transaction['type'] == "derogatory_mark":
+                derog = 0
+            else:
+                derog += 1
+        payment_history = derog
+        amount_in_bank = self.accounts[self.account_numbers[user]]
+        amount_owed = 0
+        if amount_in_bank >= 0:
+            amount_owed = 0
+        else:
+            amount_owed += amount_in_bank/100
+        length_of_history = len(transactions)
+        num_inquiries = 0
+        for transaction in transactions:
+            if transaction['type'] == "hard_inquiry":
+                num_inquiries += 1
+        new_credit = -num_inquiries
+        type_of_credit = 1  # number of banks
+        credit = 0.35 * payment_history + 0.3 * amount_owed + 0.15 * length_of_history + 0.1 * new_credit + 0.1 * type_of_credit
+        print("credit : {}, payment_history: {}, amount_owed: {}, length_of_history: {}, new_credit: {}, type_of_credit: {}".format(credit, payment_history, amount_owed, length_of_history, new_credit, type_of_credit))
+        scaled_credit = min(max((credit+3) * 100, 400), 750)
+        return scaled_credit
 
-    def record_transaction(self, address, source, destination, value):
-        transaction = Transaction(source, destination, value, "transaction")
-        self.blockchain.add_block_transaction(address, transaction)
+    def record_transaction(self, address, source, destination, value, pub_key):
+        transaction = Transaction(source, destination, "transaction", value)
+        self.blockchain.add_block_transaction(address, transaction, pub_key)
+        if DEBUG:
+            print("Transaction {} recorded in blockchain".format(transaction))
+
+    def record_derogatory(self, user):
+        transaction = Transaction(user.address, user.address, 0, "derogatory_mark")
+        self.blockchain.add_block_transaction(user.address, transaction, user.public_key)
+        if DEBUG:
+            print("Derogatory mark recorded for {} in blockchain".format(user))
+
+    def record_inquiry(self, user):
+        transaction = Transaction(user.address, user.address, 0, "hard_inquiry")
+        self.blockchain.add_block_transaction(user.address, transaction, user.public_key)
+        if DEBUG:
+            print("Hard inquiry recorded for {} in blockchain".format(user))
 
     def __str__(self):
         return self.name
@@ -103,6 +139,14 @@ class User:
         self.address = self.bank.get_hashed_address(self)
         self.bank_account = bank.register_user(self)
         self.private_key = RSA.generate(2048)
+        self.public_key = self.private_key.publickey()
+    
+    def decrypt_please(self, enc_transactions):
+        cipher_rsa = PKCS1_OAEP.new(self.private_key)
+        if DEBUG:
+            print("{} decrypted transactions".format(self))
+        decrypted = [cipher_rsa.decrypt(enc_transaction).decode() for enc_transaction in enc_transactions]
+        return decrypted
 
     def __str__(self):
         return self.name
@@ -119,7 +163,7 @@ class Shop:
         price = self.items[item]
         source = user.bank_account
         destination = self.bank_account
-        self.bank.record_transaction(user.address, source, destination, price)
+        self.bank.record_transaction(user.address, source, destination, price, user.public_key)
         if DEBUG:
             print("{} bought {} from {} for {} dollars".format(user, item, self, price))
 
@@ -139,9 +183,13 @@ def main():
     PapaJohns.record_purchase(AspiringProgrammer, "small_pizza")
     WalMart.record_purchase(AspiringProgrammer, "bike")
 
-    print(Near.hire(AspiringProgrammer))
+    BankOfAmerica.record_inquiry(AspiringProgrammer)
+    BankOfAmerica.record_derogatory(AspiringProgrammer)
 
-    print([str(block.transaction) for block in BankOfAmerica.blockchain.blocks])
+    PapaJohns.record_purchase(AspiringProgrammer, "big_pizza")
+    WalMart.record_purchase(AspiringProgrammer, "desk")
+
+    print(Near.hire(AspiringProgrammer))
 
 if __name__ == "__main__":
     main()

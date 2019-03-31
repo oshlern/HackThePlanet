@@ -3,9 +3,9 @@ from MakeMerkleTree import merkle
 import json
 from hashlib import sha256
 import requests as req
+from flask import Flask, jsonify, request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from Crypto.PublicKey import RSA
-from Crypto.Random import get_random_bytes
 from Crypto.Cipher import PKCS1_OAEP
 
 # The structure of a transaction
@@ -18,6 +18,15 @@ from Crypto.Cipher import PKCS1_OAEP
 # tx_value: (int)
 # tx_type: (string) (element of [hard_inquiry, derogatory_mark, transaction, loan, account_setup, account_deletion]) (etc.)
 # }
+
+##############################################################################
+#       To get a public key to input into add_block_transaction, write:      #
+#           RSA.generate(2048).publickey()                                   #
+##############################################################################
+
+def rand_pub_key():
+    return RSA.generate(2048).publickey()
+
 
 class RequestHandler(BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
@@ -50,7 +59,7 @@ class Blockchain:
         self.blocks = []
         self.blocknum = 0
 
-        self.blocks.append(Block(0, 0, Transaction(0, 0, "", 0)).dump()) # Null genesis block
+        self.blocks.append(Block(0, 0, Transaction(0, 0, "", 0), rand_pub_key()).dump()) # Null genesis block
 
     def validate_chain(self, chain=None): # False if chain is invalid, true if it is valid
         if chain == None:
@@ -68,6 +77,13 @@ class Blockchain:
         new_block.header['nonce'] = new_block.find_nonce(2)
         self.blocks.append(new_block.dump())
         self.blocknum += 1
+    
+    def add_block_transaction_encrypted(self, user_address, encrypted_transaction, key):
+        new_block = Block(sha256(json.dumps(self.blocks[self.blocknum]['header']).encode()).digest().hex(), user_address, encrypted_transaction, key)
+        new_block.header['nonce'] = new_block.find_nonce(2)
+        self.blocks.append(new_block.dump())
+        self.blocknum += 1
+
 
     def add_block(self, new_block):
         new_block.header['nonce'] = new_block.find_nonce(2)
@@ -101,9 +117,9 @@ class Block:
         temp_dict = {
             "prev_hash": self.prev_hash,
             "user_address": self.user_address,
-            "transaction": encrypt_txs(self.key),
+            "transaction": self.encrypt_txs(self.key),
             "hash": merkle(self.transaction.dump()),
-            "header": json.dumps(self.header)
+            "header": self.header
         }
         return temp_dict
     
@@ -118,7 +134,8 @@ class Block:
 
         # Encrypt the session key with the public RSA key
         cipher_rsa = PKCS1_OAEP.new(pub_key)
-        enc_txs = cipher_rsa.encrypt(self.transaction.dump())
+        # print(self.transaction.dump())
+        enc_txs = cipher_rsa.encrypt(self.transaction.dump().encode())
 
         # Decrypt the session key with the private RSA key
         # cipher_rsa = PKCS1_OAEP.new(private_key)
@@ -146,19 +163,36 @@ class Transaction:
 def generate_random_text(n):
     return join(random.choice(string.ascii_lowercase + string.digits) for _ in range(n))
 
-def run(server_class=HTTPServer, handler_class=RequestHandler, port=8080):
-    server_address = ('127.0.0.1', port)
-    httpd = server_class(server_address, handler_class)
-    print('Starting httpd...')
-    httpd.serve_forever()
+blockchain = Blockchain()
+nodes = set()
+usertable = set()
+
+app = Flask(__name__)
+
+@app.route('/latest_hash', methods=['GET'])
+def get_latest_hash():
+    return blockchain.blocks[blockchain.blocknum-1].hash
+
+@app.route('/blockchain', methods=['GET'])
+def get_blockchain():
+    temp = str([b for b in blockchain.blocks])[1:-1].replace("'", '"')
+    return temp
+
+@app.route('/add_block_encrypted', methods=['POST'])
+def recv_block_encrypted():
+    values = request.get_json()
+    user = values["user"]
+    transaction = values["transaction"]
+    blockchain.add_block_transaction_encrypted(user, transaction, rand_pub_key())
+    return "complete\n" + blockchain.blocks[blockchain.blocknum-1].hash
+
+@app.route('/add_block', methods=['POST'])
+def recv_block():
+    values = request.get_json()
+    user = values["user"]
+    transaction = Transaction(values["transaction"]["src"], values["transaction"]["dest"], values["transaction"]["tx_type"], values["transaction"]["tx_value"])
+    blockchain.add_block_transaction(user, transaction, rand_pub_key())
+    return "complete\n" + blockchain.blocks[blockchain.blocknum-1].hash
 
 if(__name__ == "__main__"):
-    # blockchain = Blockchain()
-    # for i in range(1,11):
-    #     blockchain.add_block_transaction(i, Transaction(i, i+1, "transaction", 1))
-    
-    # print(blockchain.validate_chain())
-    blockchain = Blockchain()
-    nodes = set() # List of IP addresses of the other blockchains
-    usertable = set()
-    run()
+    app.run(host='10.1.128.115', port=8082)

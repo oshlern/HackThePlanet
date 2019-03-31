@@ -4,7 +4,11 @@ import json
 
 def merkle(txs):
     first_layer = []
+    # print('\n\n')
+    # print(type(txs))
     for tx in range(len(txs)):
+        # print(type(txs[tx]))
+        # print(txs[tx])
         hash_object = sha256(txs[tx].encode())
         first_layer.append(hash_object.digest())
 
