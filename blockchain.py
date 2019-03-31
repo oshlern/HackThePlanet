@@ -42,7 +42,7 @@ class Blockchain:
         self.blocks.append(new_block)
         self.blocknum += 1
 
-    def synchronize():
+    def synchronize(self):
         pass
 
 class Block:
@@ -51,20 +51,20 @@ class Block:
         self.user_address = user_address
         self.transaction = transaction
         self.hash = merkle(self.transaction.dump())
-        self.header = {'addr': self.user_address, 'ph':prev_hash, 'merkle': self.hash, 'nonce': 0}
+        self.header = {'addr': self.user_address, 'ph': prev_hash, 'merkle': self.hash, 'nonce': 0}
 
     def find_nonce(self, DIFF):
         nonce = 0
         head = self.header
         tester = sha256(json.dumps(head).encode())
-        while tester.digest().hex()[:self.DIFF] != '0'*self.DIFF:
+        while tester.digest().hex()[:DIFF] != '0'*DIFF:
             nonce += 1
             head['nonce'] = nonce
             tester = sha256(json.dumps(head).encode())
         #print(nonce)
         #print(tester.digest().hex())
         return nonce
-        
+
 class Transaction:
     def __init__(self, src, dst, tx_type, tx_value):
         self.source = src
