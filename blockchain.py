@@ -109,6 +109,10 @@ class Block:
         # session_key = cipher_rsa.decrypt(enc_session_key)
         return enc_txs
 
+def get_hashed_address(ssn, name):
+    address = sha256(sha256((ssn + name).encode()).digest()).digest().hex()
+    return address
+
 class Transaction:
     def __init__(self, src, dst, tx_type, tx_value):
         self.source = src
@@ -136,29 +140,3 @@ def generate_random_text(n):
 #     blockchain.add_block_transaction(i, Transaction(i, i+1, "transaction", 1))
 
 # print(blockchain.validate_chain())
-
-blockchain = Blockchain()
-nodes = set()
-usertable = set()
-
-app = Flask(__name__)
-
-@app.route('/latest_hash', methods=['GET'])
-def get_latest_hash():
-    return blockchain.blocks[blockchain.blocknum-1].hash
-
-@app.route('/blockchain', methods=['GET'])
-def get_blockchain():
-    temp = str([b for b in blockchain.blocks])[1:-1].replace("'", '"')
-    return temp
-
-@app.route('/add_block', methods=['POST'])
-def recv_block():
-    values = request.get_json()
-    user = values["user"]
-    transaction = Transaction(values["transaction"]["src"], values["transaction"]["dest"], values["transaction"]["tx_type"], values["transaction"]["tx_value"])
-    blockchain.add_block_transaction(user, transaction, rand_pub_key())
-    return "complete\n" + str(blockchain.blocks[blockchain.blocknum-1])
-
-if(__name__ == "__main__"):
-    app.run(host='10.1.128.115', port=8082)

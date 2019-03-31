@@ -33,11 +33,11 @@ class Company:
     def hire(self, user):
         credit = self.bank.get_credit(user)
         if credit >= self.hiring_threshold:
-            print("{} hired {}!".format(self, user))
+            print("{} hired {} because their credit score was above the threshold of {}!".format(self, user, self.hiring_threshold))
             self.employees.append(user)
             return True
         else:
-            print("{} rejected {}!".format(self, user))
+            print("{} rejected {} because their credit score was below the threshold of {}!".format(self, user, self.hiring_threshold))
             return False
 
     def __str__(self):
@@ -49,6 +49,7 @@ class Bank:
         self.account_numbers = {} # {User: bank_number}
         self.name = name
         self.blockchain = Blockchain()
+        self.registered_users = {} # {name: user class}
 
     def get_hashed_address(self, user):
         address = sha256(sha256((user.ssn + user.name).encode()).digest()).digest().hex()
@@ -58,6 +59,8 @@ class Bank:
         bank_number = generate_random_text(20)
         self.account_numbers[user] = bank_number
         self.accounts[bank_number] = 0
+        if isinstance(user, User):
+            self.registered_users[user.name] = user
         return bank_number
 
     def get_credit(self, user):
@@ -67,8 +70,8 @@ class Bank:
         for tx in range(len(user_transactions)):
             if merkle(user_transactions[tx]) != user_merkles[tx]:
                 raise ValueError("Incorrect merkle hash, {} is lying".format(user))
-            else:
-                print("{}'s decrypted transactions verified via merkle hash".format(user))
+        if DEBUG:
+            print("{}'s decrypted transactions verified via merkle hash".format(user))
         credit = self.compute_credit(user, user_transactions)
         if DEBUG:
             print("Retrieved {}'s credit: {}".format(user, credit))
@@ -91,48 +94,48 @@ class Bank:
         transactions = [json.loads(transaction) for transaction in transactions]
         for transaction in transactions:
             if transaction['type'] == "derogatory_mark":
-                derog += 1
-            else:
                 derog = 0
-            if derog == 0:
-                payment_history += 75
-            if derog == 1:
-                payment_history += 55
-            if derog == 2:
-                payment_history += 25
-            if derog == 3:
-                payment_history += 15
-            if derog == 4:
-                payment_history += 10
             else:
-                payment_history = 0
+                derog += 1
         payment_history = 0
+        if derog == 0:
+            payment_history = 0
+        elif derog == 1:
+            payment_history = 10
+        elif derog == 2:
+            payment_history = 25
+        elif derog == 3:
+            payment_history = 55
+        elif derog >= 4:
+            payment_history = 75
+        if DEBUG:
+            print("History since last derogatory remark: {} ==> {} points".format(derog, payment_history))
+
         amount_in_bank = self.accounts[self.account_numbers[user]]
-        amount_owed = 0
-        if amount_in_bank >= 0:
-            amount_owed = 0
-        else:
-            amount_owed += amount_in_bank/100
-        length_of_history = len(transactions)
+        amount_owed = min(amount_in_bank/20, 0)
+
+        length_of_history = 20 * len(transactions)
+
         num_inquiries = 0
         for transaction in transactions:
             if transaction['type'] == "hard_inquiry":
                 num_inquiries += 1
-        new_credit = -num_inquiries
-        type_of_credit = 1  # number of banks
-        credit = 0.35 * payment_history + 0.3 * amount_owed + 0.15 * length_of_history + 0.1 * new_credit + 0.1 * type_of_credit
+        new_credit = -40*num_inquiries
+        type_of_credit = 1*20  # number of banks
+        # credit = 0.35 * payment_history + 0.3 * amount_owed + 0.15 * length_of_history + 0.1 * new_credit + 0.1 * type_of_credit
+        credit = payment_history + amount_owed + length_of_history + new_credit + type_of_credit
+        credit = min(max(credit*2+300, 300), 850)
         if DEBUG:
             print("Computing credit using {}'s history of payment_history: {}, amount_owed: {}, length_of_history: {}, new_credit: {}, type_of_credit: {}".format(user, payment_history, amount_owed, length_of_history, new_credit, type_of_credit))
             print("{}'s computed credit: {}, ".format(user, credit))
-        scaled_credit = min(max((credit+3) * 100, 400), 750)
+        return credit
 
-        return scaled_credit
-
-    def record_transaction(self, address, source, destination, value, pub_key):
+    def record_transaction(self, user, address, source, destination, value, pub_key):
         transaction = Transaction(source, destination, "transaction", value)
         self.blockchain.add_block_transaction(address, transaction, pub_key)
+        self.accounts[self.account_numbers[user]] -= value
         if DEBUG:
-            print("Transaction of {} dollars from {} to {} recorded in blockchain database".format(value, source, destination))
+            print("Transaction of {} dollars recorded in blockchain database".format(value, source, destination))
 
     def record_derogatory(self, user):
         transaction = Transaction(user.address, user.address, 0, "derogatory_mark")
@@ -154,10 +157,12 @@ class User:
         self.name = name
         self.bank = bank
         self.ssn = ssn
-        self.address = self.bank.get_hashed_address(self)
-        self.bank_account = bank.register_user(self)
         self.private_key = RSA.generate(2048)
         self.public_key = self.private_key.publickey()
+        self.address = self.bank.get_hashed_address(self)
+        self.bank_account = self.bank.register_user(self)
+        if DEBUG:
+            print("User generated named {}".format(self.name))
 
     def decrypt_please(self, enc_transactions):
         cipher_rsa = PKCS1_OAEP.new(self.private_key)
@@ -175,13 +180,15 @@ class Shop:
         self.items = items
         self.bank = bank
         self.bank_account = bank.register_user(self)
+        if DEBUG:
+            print("Created shop {} that serves {}".format(self.name, list(self.items.keys())))
 
     def record_purchase(self, user, item):
         assert item in self.items
         price = self.items[item]
         source = user.bank_account
         destination = self.bank_account
-        self.bank.record_transaction(user.address, source, destination, price, user.public_key)
+        self.bank.record_transaction(user, user.address, source, destination, price, user.public_key)
         if DEBUG:
             print("{} bought {} from {} for {} dollars".format(user, item, self, price))
 
@@ -192,7 +199,7 @@ def main():
     BankOfAmerica = Bank("BankOfAmerica")
 
     Near = Company(name="Near", hiring_threshold=700, bank=BankOfAmerica)
-    AspiringProgrammer = User(name="Aliaksandr Hudzilin", ssn="123456", bank=BankOfAmerica)#"123 Electric Ave")
+    AspiringProgrammer = User(name="Yoav", ssn="123456", bank=BankOfAmerica)#"123 Electric Ave")
 
     PapaJohns = Shop("Papa John's", PAPAJOHNS, BankOfAmerica)
     WalMart = Shop("Walmart", WALMART, BankOfAmerica)
@@ -207,7 +214,7 @@ def main():
     PapaJohns.record_purchase(AspiringProgrammer, "big_pizza")
     WalMart.record_purchase(AspiringProgrammer, "desk")
 
-    print(Near.hire(AspiringProgrammer))
+    Near.hire(AspiringProgrammer)
 
 if __name__ == "__main__":
     main()
